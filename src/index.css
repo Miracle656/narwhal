@@ -1,0 +1,86 @@
+@import "tailwindcss";
+
+@theme {
+  --color-narwhal-bg: #020c1b;
+  --color-narwhal-card: #0a192f;
+  --color-narwhal-cyan: #64ffda;
+  --color-narwhal-lime: #c0ff00;
+
+  --font-mono: "Courier New", Courier, monospace;
+
+  --shadow-neon: 0 0 10px #64ffda;
+  --shadow-lime: 0 0 10px #c0ff00;
+}
+
+/* Base Styles - Brutalist Restore */
+body {
+  background-color: var(--color-narwhal-bg);
+  color: var(--color-narwhal-cyan);
+  font-family: var(--font-mono);
+  overflow-x: hidden;
+  min-height: 100vh;
+}
+
+/* Bubbles - Bio-Toxic Version */
+.bubbles {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.bubble {
+  position: absolute;
+  bottom: -100px;
+  background: transparent;
+  border: 1px solid rgba(100, 255, 218, 0.3);
+  /* Cyan Outline */
+  box-shadow: 0 0 5px rgba(100, 255, 218, 0.2);
+  border-radius: 50%;
+  /* Keep round bubbles */
+  animation: rise 15s infinite ease-in;
+}
+
+@keyframes rise {
+  0% {
+    bottom: -100px;
+    transform: translateX(0);
+    opacity: 0;
+  }
+
+  50% {
+    opacity: 1;
+    transform: translateX(100px);
+  }
+
+  100% {
+    bottom: 1000px;
+    transform: translateX(-200px);
+    opacity: 0;
+  }
+}
+
+/* Brutalist Utilities */
+.border-brutal {
+  border: 2px solid var(--color-narwhal-cyan);
+}
+
+.btn-brutal {
+  @apply px-6 py-3 bg-transparent border-2 border-narwhal-cyan text-narwhal-cyan font-bold uppercase tracking-wider transition-all hover:bg-narwhal-cyan hover:text-narwhal-bg hover:shadow-neon active:translate-y-1;
+}
+
+.btn-primary {
+  @apply px-6 py-3 bg-narwhal-cyan border-2 border-narwhal-cyan text-narwhal-bg font-bold uppercase tracking-wider transition-all hover:bg-transparent hover:text-narwhal-cyan hover:shadow-neon;
+}
+
+.input-brutal {
+  @apply w-full bg-narwhal-card border-2 border-narwhal-cyan p-4 text-center text-xl tracking-widest text-white focus:outline-none focus:shadow-neon placeholder-gray-600;
+}
+
+.card-brutal {
+  @apply bg-narwhal-card border border-narwhal-cyan/30 p-4 transition-all hover:border-narwhal-cyan hover:shadow-neon;
+}

@@ -1,0 +1,2 @@
+src/components/AvatarRenderer.tsx(1,1): error TS6133: 'useMemo' is declared but its value is never read.
+src/components/MintModal.tsx(5,1): error TS6133: 'AvatarRenderer' is declared but its value is never read.
