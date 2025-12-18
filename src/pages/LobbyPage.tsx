@@ -43,7 +43,10 @@ export default function LobbyPage() {
         const tx = new Transaction();
         tx.moveCall({
             target: `${PACKAGE_ID}::game::start_game`,
-            arguments: [tx.object(gameId)]
+            arguments: [
+                tx.object(gameId),
+                tx.object('0x6') // Clock Object
+            ]
         });
 
         signAndExecuteTransaction(
@@ -111,7 +114,7 @@ export default function LobbyPage() {
                         <div className="scale-75 origin-top">
                             <AvatarRenderer
                                 dna={[p.charCodeAt(2) % 5, p.charCodeAt(3) % 10, p.charCodeAt(4) % 10, p.charCodeAt(5) % 10]}
-                                className="w-32 h-32"
+                                sizeClass="w-32 h-32"
                             />
                         </div>
                         <span className="text-xs font-mono mt-2 text-gray-300 truncate w-full text-center">

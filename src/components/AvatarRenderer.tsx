@@ -1,11 +1,11 @@
-
 type AvatarRendererProps = {
     dna: number[]; // [Skin, Tusk, Eyes, Accessory]
     valueScore?: number;
     className?: string;
+    sizeClass?: string;
 };
 
-export default function AvatarRenderer({ dna, valueScore = 0, className }: AvatarRendererProps) {
+export default function AvatarRenderer({ dna, valueScore = 0, className, sizeClass = "w-64 h-64" }: AvatarRendererProps) {
     // Parsing DNA
     // For this demo, we might only have a few assets. 
     // We map the DNA index to the asset path.
@@ -20,7 +20,7 @@ export default function AvatarRenderer({ dna, valueScore = 0, className }: Avata
     const isEvolved = valueScore > 100;
 
     return (
-        <div className={`relative w-64 h-64 bg-narwhal-card border-brutal rounded-none overflow-hidden ${className || ''}`}>
+        <div className={`relative ${sizeClass} bg-narwhal-card border-brutal rounded-none overflow-hidden ${className || ''}`}>
             {/* Glow Effect for Evolved Narwhals */}
             {isEvolved && (
                 <div className="absolute inset-0 bg-narwhal-lime opacity-20 animate-pulse blur-xl" />
