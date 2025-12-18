@@ -40,6 +40,7 @@ export default function GamePage() {
     const [leaderboard, setLeaderboard] = useState<{ address: string, score: number }[]>([]);
     const [lastCalculatedQuestionIndex, setLastCalculatedQuestionIndex] = useState(-1);
     const [hasSubmitted, setHasSubmitted] = useState(false);
+    const [pendingRoundScore, setPendingRoundScore] = useState(0);
 
     // Fetch Game Object with auto-refresh
     const { data: gameObj, refetch: refetchGame } = useSuiClientQuery('getObject', {
@@ -91,8 +92,9 @@ export default function GamePage() {
                     });
 
                     if (!isHost && selectedOption !== null && selectedOption === QUESTIONS[currentQuestionIndex].correct) {
-                        const roundScore = 500 + (timeLeftSec * 50);
-                        console.log("✅ CORRECT ANSWER! Adding score:", roundScore);
+                        // Use the score calculated at the moment of click
+                        const roundScore = pendingRoundScore;
+                        console.log("✅ CORRECT ANSWER! Adding captured score:", roundScore);
                         setMyScore(prev => {
                             const newScore = prev + roundScore;
                             console.log("📊 Score updated:", prev, "→", newScore);
@@ -213,6 +215,28 @@ export default function GamePage() {
 
     const handleOptionSelect = (index: number) => {
         if (selectedOption !== null || isHost) return;
+
+        // ⚡ FASTEST FINGER FIRST SCORING
+        // Calculate score based on EXACT time of click relative to question start
+        if (gameObj?.data?.content) {
+            const fields = (gameObj.data.content as any).fields;
+            const gameStartTime = Number(fields.start_timestamp_ms);
+            const ROUND_DURATION_MS = 20000;
+
+            const questionStartTime = gameStartTime + (currentQuestionIndex * ROUND_DURATION_MS);
+            const timeTaken = Date.now() - questionStartTime;
+
+            // Base: 150
+            // Bonus: Max 600, decays by 30 points per second (0.6 pts per 20ms)
+            // Exact Max: 150 + 600 = 750
+            // Exact Min (at 20s): 150 + (600 - 600) = 150
+            const bonus = Math.max(0, 600 - Math.floor((timeTaken / 1000) * 30));
+            const exactScore = 150 + bonus;
+
+            console.log(`🖱️ CLICKED! Time taken: ${timeTaken}ms | Score locked: ${exactScore}`);
+            setPendingRoundScore(exactScore);
+        }
+
         setSelectedOption(index);
     };
 

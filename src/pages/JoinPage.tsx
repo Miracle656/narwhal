@@ -185,24 +185,12 @@ export default function JoinPage() {
                                         <h3 className="text-gray-500 font-mono text-xs tracking-widest">PENDING OPERATIONS</h3>
                                         <span className="text-[10px] text-narwhal-cyan">SYNCED</span>
                                     </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        {[
-                                            { title: "SUI_101", score: "86%", status: "COMPLETE" },
-                                            { title: "MOVE_VM", score: "PENDING", status: "ACTIVE" }
-                                        ].map((activity, i) => (
-                                            <div key={i} className="bg-narwhal-card border border-gray-800 p-4 hover:border-narwhal-cyan transition-all group cursor-pointer relative overflow-hidden">
-                                                <div className={`absolute top-0 left-0 w-1 h-full ${activity.status === 'COMPLETE' ? 'bg-narwhal-cyan' : 'bg-narwhal-lime animate-pulse'}`} />
-                                                <div className="pl-4">
-                                                    <div className="flex justify-between items-start mb-2">
-                                                        <span className="text-[10px] text-gray-400 font-mono">{activity.status}</span>
-                                                    </div>
-                                                    <div className="font-bold text-white text-lg mb-1 tracking-wider">{activity.title}</div>
-                                                    <div className={`text-2xl font-bold font-mono ${activity.status === 'COMPLETE' ? 'text-narwhal-cyan' : 'text-narwhal-lime'}`}>
-                                                        {activity.score}
-                                                    </div>
-                                                </div>
+                                    <div className="grid grid-cols-1 gap-4">
+                                        <div className="bg-narwhal-card border border-gray-800 p-8 text-center opacity-50">
+                                            <div className="text-narwhal-cyan font-mono text-sm tracking-widest animate-pulse">
+                                                AWAITING_COORDINATES // SCANNING_NET
                                             </div>
-                                        ))}
+                                        </div>
                                     </div>
                                 </div>
                             </div>

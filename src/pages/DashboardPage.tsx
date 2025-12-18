@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Transaction } from '@mysten/sui/transactions';
-import { useSignAndExecuteTransaction, useCurrentAccount, useSuiClient } from '@mysten/dapp-kit';
+import { useSignAndExecuteTransaction, useCurrentAccount, useSuiClient, useSuiClientQuery } from '@mysten/dapp-kit';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { PACKAGE_ID } from '../constants';
@@ -15,43 +15,129 @@ export default function DashboardPage() {
 
     const [pendingReward, setPendingReward] = useState<{ gameId: string, amount: number } | null>(null);
     const [isClaiming, setIsClaiming] = useState(false);
+    const [isJoining, setIsJoining] = useState(false);
     const [isCreating, setIsCreating] = useState(false);
     const [createdGameId, setCreatedGameId] = useState<string | null>(null);
+    const [checkRewardId, setCheckRewardId] = useState("");
+    const [joinGameId, setJoinGameId] = useState("");
+    const [rewardStatusMsg, setRewardStatusMsg] = useState<string | null>(null);
+    const [isEvolving, setIsEvolving] = useState(false);
+
+    // Fetch User's Avatar for Claiming & Stats
+    const { data: ownedObjects } = useSuiClientQuery(
+        'getOwnedObjects',
+        {
+            owner: account?.address || '',
+            filter: { StructType: `${PACKAGE_ID}::avatar::Avatar` },
+            options: { showContent: true }
+        },
+        { enabled: !!account }
+    );
+
+    // Parse Avatar Data
+    const avatarObj = ownedObjects?.data?.[0]?.data;
+    const userAvatarId = avatarObj?.objectId;
+    const avatarFields = (avatarObj?.content as any)?.fields;
+
+    const avatarData = {
+        dna: avatarFields?.dna ? (avatarFields.dna as number[]) : [0, 0, 0, 0],
+        valueScore: avatarFields?.value_score ? Number(avatarFields.value_score) : 0,
+        lockedBalance: avatarFields?.locked_balance ? Number(avatarFields.locked_balance) : 0,
+        level: avatarFields?.level ? Number(avatarFields.level) : 0,
+    };
+
+    // Evolution Logic
+    const nextLevelThreshold = (avatarData.level + 1) * 10;
+    const canEvolve = avatarData.level < 3 && avatarData.valueScore >= nextLevelThreshold;
+
+    const handleEvolve = async () => {
+        if (!userAvatarId || !canEvolve) return;
+        setIsEvolving(true);
+        try {
+            const tx = new Transaction();
+            tx.moveCall({
+                target: `${PACKAGE_ID}::avatar::evolve_avatar`,
+                arguments: [tx.object(userAvatarId)],
+            });
+
+            signAndExecuteTransaction(
+                { transaction: tx as any },
+                {
+                    onSuccess: () => {
+                        toast.error("EVOLUTION STARTED..."); // Toast error color looks cool/alerting, or use success
+                        setTimeout(() => {
+                            toast.success("EVOLUTION COMPLETE! SYSTEM UPGRADED.");
+                            // ideally refetch here
+                        }, 2000);
+                    },
+                    onError: () => toast.error("Evolution Failed")
+                }
+            );
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setIsEvolving(false);
+        }
+    };
+
+    const formatBalance = (mist: number) => {
+        return (mist / 1_000_000_000).toFixed(2);
+    };
+
+    const checkRewardForGame = async (targetGameId: string) => {
+        if (!account || !targetGameId) return;
+        setRewardStatusMsg("SCANNING_DATABASE...");
+        setPendingReward(null);
+
+        try {
+            console.log("🔍 Checking rewards for:", targetGameId);
+            const gameData = await client.getObject({
+                id: targetGameId,
+                options: { showContent: true }
+            });
+
+            if (gameData.error) {
+                setRewardStatusMsg("ERROR: OPERATION_ID_NOT_FOUND");
+                return;
+            }
+
+            const fields = (gameData.data?.content as any)?.fields;
+            const pendingRewardsTableId = fields?.pending_rewards?.fields?.id?.id;
+
+            if (!pendingRewardsTableId) {
+                setRewardStatusMsg("ERROR: INVALID_OPERATION_DATA");
+                return;
+            }
+
+            // Check if our address is in the table via Dynamic Field
+            try {
+                const dof = await client.getDynamicFieldObject({
+                    parentId: pendingRewardsTableId,
+                    name: { type: 'address', value: account.address }
+                });
+
+                if (dof.data?.content) {
+                    const amount = (dof.data.content as any).fields.value;
+                    setPendingReward({ gameId: targetGameId, amount: Number(amount) });
+                    setRewardStatusMsg(null); // Clear msg if found, UI will show card
+                    toast.success(`REWARD FOUND: ${amount} MIST`);
+                }
+            } catch (err) {
+                console.log("User not in pending rewards");
+                // Only show error if checking manually
+                setRewardStatusMsg("NO_ACTIVE_REWARD_FOUND. (ALREADY_CLAIMED_OR_MISSION_FAILED)");
+            }
+
+        } catch (e) {
+            console.error("Error checking reward:", e);
+            setRewardStatusMsg("SYSTEM_ERROR_DURING_SCAN");
+        }
+    };
 
     useEffect(() => {
-        const checkReward = async () => {
-            if (!account || !location.state) return;
-
-            const state = location.state as any;
-            if (state.gameId && state.didWin) {
-                // Verify on-chain that we're actually in pending_rewards
-                try {
-                    const gameData = await client.getObject({
-                        id: state.gameId,
-                        options: { showContent: true }
-                    });
-
-                    const fields = (gameData.data?.content as any)?.fields;
-                    const pendingRewardsTable = fields?.pending_rewards;
-
-                    // Check if our address is in the table
-                    if (pendingRewardsTable?.fields?.contents) {
-                        const hasReward = pendingRewardsTable.fields.contents.some(
-                            (entry: any) => entry.fields.key.toLowerCase() === account.address.toLowerCase()
-                        );
-
-                        if (hasReward) {
-                            setPendingReward({ gameId: state.gameId, amount: 500 });
-                            toast.success("MISSION ACCOMPLISHED! REWARD ALLOCATED.");
-                        }
-                    }
-                } catch (e) {
-                    console.error("Error checking reward:", e);
-                }
-            }
-        };
-
-        checkReward();
+        if (location.state && (location.state as any).gameId) {
+            checkRewardForGame((location.state as any).gameId);
+        }
     }, [location, account, client]);
 
     const handleCreateGame = async () => {
@@ -113,27 +199,71 @@ export default function DashboardPage() {
         }
     };
 
+    const handleJoinGame = async () => {
+        if (!joinGameId) {
+            toast.error("Please enter coordinates (Game ID)");
+            return;
+        }
+        setIsJoining(true);
+        try {
+            const tx = new Transaction();
+            tx.moveCall({
+                target: `${PACKAGE_ID}::game::join_game`,
+                arguments: [tx.object(joinGameId)],
+            });
+
+            signAndExecuteTransaction(
+                { transaction: tx as any },
+                {
+                    onSuccess: () => {
+                        toast.success("ACCESS GRANTED. ENTERING LOBBY.");
+                        navigate(`/lobby/${joinGameId}`);
+                    },
+                    onError: (e) => {
+                        console.error("Join failed:", e);
+                        toast.error("Join Failed: Game might be active or full.");
+                        // Optional: Navigate anyway if user insists they are already joined
+                        // navigate(`/lobby/${joinGameId}`); 
+                    }
+                }
+            );
+        } catch (e) {
+            console.error(e);
+            toast.error("Transaction Error");
+        } finally {
+            setIsJoining(false);
+        }
+    };
+
     const handleClaim = async () => {
-        if (!account) return;
+        if (!account || !pendingReward || !userAvatarId) {
+            if (!userAvatarId) toast.error("Avatar Not Found! Cannot claim.");
+            return;
+        }
         setIsClaiming(true);
         try {
-            // For Demo: If we have a pending reward locally, we attempt to claim on-chain
-            if (!pendingReward) {
-                toast.error("No reward allocaton detected.");
-                return;
-            }
+            const tx = new Transaction();
+            tx.moveCall({
+                target: `${PACKAGE_ID}::game::claim_reward`,
+                arguments: [
+                    tx.object(pendingReward.gameId),
+                    tx.object(userAvatarId)
+                ]
+            });
 
-            // In a real app, we would verify the win proof here.
-            // Since we are mocking the "Win" determination locally, we will try to claim 
-            // the pot blindly using the 'claim_reward' function if the contract allows it.
-            // Note: The move contract currently expects the Host to have called 'finalize_game' to populate the table.
-            // Since we skipped 'finalize_game' in this mock flow, the honest claim will fail on-chain.
-
-            // AUTOMATED FIX FOR DEMO:
-            // We will just dispense a "Mock Claim" success to satisfy the UX flow.
-            await new Promise(r => setTimeout(r, 2000)); // Fake network play
-            toast.success("REWARD CLAIMED: 0.1 SUI + 200 XP");
-            setPendingReward(null);
+            signAndExecuteTransaction(
+                { transaction: tx as any },
+                {
+                    onSuccess: () => {
+                        toast.success("REWARD CLAIMED! FUNDS & XP RECEIVED.");
+                        setPendingReward(null);
+                    },
+                    onError: (e) => {
+                        console.error("Claim failed", e);
+                        toast.error("Claim Transaction Failed");
+                    }
+                }
+            );
 
         } catch (e) {
             console.error(e);
@@ -147,65 +277,112 @@ export default function DashboardPage() {
         <div className="min-h-screen p-8 max-w-6xl mx-auto pt-24 z-10 relative">
             <h1 className="text-4xl font-black text-white mb-8 border-l-4 border-narwhal-lime pl-4">OPERATOR_DASHBOARD</h1>
 
-            {/* Create Game Section */}
-            <div className="mb-12 bg-narwhal-card border-brutal p-8 shadow-neon">
-                <div className="flex justify-between items-center mb-6">
+            {/* Create & Join Game Section */}
+            <div className="mb-12 grid grid-cols-1 md:grid-cols-2 gap-8">
+                {/* Create Game */}
+                <div className="bg-narwhal-card border-brutal p-8 shadow-neon flex flex-col justify-between">
                     <div>
-                        <h2 className="text-2xl font-mono text-white">INITIATE_OPERATION</h2>
-                        <p className="text-gray-400 text-sm">Create a new game lobby and invite operatives.</p>
+                        <div className="flex justify-between items-center mb-6">
+                            <div>
+                                <h2 className="text-2xl font-mono text-white">INITIATE_OPERATION</h2>
+                                <p className="text-gray-400 text-sm">Create a new game lobby.</p>
+                            </div>
+                            <div className="text-narwhal-cyan font-mono text-xs border border-narwhal-cyan px-2 py-1">
+                                0.1 SUI
+                            </div>
+                        </div>
+                        {createdGameId ? (
+                            <div className="bg-black/50 p-4 border border-narwhal-lime flex justify-between items-center gap-4 mb-4">
+                                <div className="flex-1 overflow-hidden">
+                                    <div className="text-xs text-narwhal-lime mb-1">OPERATION_ID</div>
+                                    <div className="font-mono text-sm text-white truncate">{createdGameId}</div>
+                                </div>
+                                <button onClick={() => { navigator.clipboard.writeText(createdGameId); toast.success("Copied!"); }} className="text-gray-400 hover:text-white">
+                                    📋
+                                </button>
+                            </div>
+                        ) : null}
                     </div>
-                    {/* Just a visual indicator of cost */}
-                    <div className="text-narwhal-cyan font-mono text-sm border border-narwhal-cyan px-3 py-1">
-                        COST: 0.1 SUI
-                    </div>
+
+                    {createdGameId ? (
+                        <button
+                            onClick={() => navigate(`/lobby/${createdGameId}`)}
+                            className="bg-narwhal-cyan text-black font-bold w-full py-3 hover:bg-narwhal-lime transition-colors text-sm uppercase tracking-wider"
+                        >
+                            ENTER LOBBY
+                        </button>
+                    ) : (
+                        <button
+                            onClick={handleCreateGame}
+                            disabled={isCreating}
+                            className="btn-primary w-full py-4 text-lg flex items-center justify-center gap-2"
+                        >
+                            {isCreating ? "INITIALIZING..." : "+ NEW OPERATION"}
+                        </button>
+                    )}
                 </div>
 
-                {createdGameId ? (
-                    <div className="bg-black/50 p-4 border border-narwhal-lime flex justify-between items-center gap-4">
-                        <div className="flex-1">
-                            <div className="text-xs text-narwhal-lime mb-1">OPERATION_ID</div>
-                            <div className="font-mono text-xl text-white tracking-widest">{createdGameId}</div>
-                        </div>
-                        <div className="flex gap-2">
-                            <button
-                                onClick={() => navigate(`/lobby/${createdGameId}`)}
-                                className="bg-narwhal-cyan text-black font-bold px-4 py-2 hover:bg-narwhal-lime transition-colors text-sm"
-                            >
-                                ENTER LOBBY
-                            </button>
-                            <button onClick={() => { navigator.clipboard.writeText(createdGameId); toast.success("Copied to clipboard!"); }} className="text-gray-400 hover:text-white border border-gray-700 px-4 py-2 text-sm">
-                                COPY ID
-                            </button>
-                        </div>
+                {/* Join Game */}
+                <div className="bg-narwhal-card border-brutal p-8 shadow-neon flex flex-col justify-between">
+                    <div>
+                        <h2 className="text-2xl font-mono text-white mb-2">JOIN_OPERATION</h2>
+                        <p className="text-gray-400 text-sm mb-6">Enter existing operation coordinates.</p>
+
+                        <input
+                            value={joinGameId}
+                            onChange={(e) => setJoinGameId(e.target.value)}
+                            placeholder="ENTER_OPERATION_ID"
+                            className="w-full bg-black/50 border border-narwhal-cyan p-4 text-white font-mono text-lg placeholder-gray-600 focus:outline-none focus:border-narwhal-lime transition-colors text-center"
+                        />
                     </div>
-                ) : (
                     <button
-                        onClick={handleCreateGame}
-                        disabled={isCreating}
-                        className="btn-primary w-full py-6 text-xl flex items-center justify-center gap-4"
+                        onClick={handleJoinGame}
+                        disabled={isJoining}
+                        className="bg-gray-800 text-white font-bold w-full py-4 mt-6 hover:bg-white hover:text-black transition-colors text-lg uppercase tracking-wider"
                     >
-                        {isCreating ? "INITIALIZING..." : (
-                            <>
-                                <span className="text-2xl">+</span> NEW_OPERATION
-                            </>
-                        )}
+                        {isJoining ? "ESTABLISHING UPLINK..." : "JOIN MISSION"}
                     </button>
-                )}
+                </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                 {/* Avatar Stat Card */}
-                <div className="md:col-span-1 bg-narwhal-card border-brutal p-6 flex flex-col items-center shadow-lime">
+                <div className="md:col-span-1 bg-narwhal-card border-brutal p-6 flex flex-col items-center shadow-lime relative">
                     <h2 className="text-narwhal-cyan font-mono text-xs mb-4 w-full text-left"> AVATAR_STATUS</h2>
-                    <AvatarRenderer dna={[3, 5, 2, 8]} valueScore={200} className="border-2 border-narwhal-lime" />
+
+                    <div className="relative">
+                        <AvatarRenderer
+                            dna={avatarData.dna}
+                            level={avatarData.level}
+                            className={`border-2 border-narwhal-lime ${canEvolve ? 'opacity-50' : ''}`}
+                        />
+
+                        {canEvolve && (
+                            <div className="absolute inset-0 flex items-center justify-center z-50">
+                                <button
+                                    onClick={handleEvolve}
+                                    disabled={isEvolving}
+                                    className="bg-narwhal-lime text-black font-black px-6 py-4 animate-bounce hover:scale-110 transition-transform uppercase tracking-widest shadow-[0_0_20px_rgba(192,255,0,0.8)]"
+                                >
+                                    {isEvolving ? "EVOLVING..." : "EVOLVE!"}
+                                </button>
+                            </div>
+                        )}
+                    </div>
+
                     <div className="w-full mt-6 space-y-2 font-mono">
                         <div className="flex justify-between items-center p-2 border border-gray-800">
                             <span className="text-gray-400 text-xs">VALUE_SCORE</span>
-                            <span className="text-narwhal-lime font-bold">200</span>
+                            <div className="flex items-center gap-2">
+                                <span className="text-narwhal-lime font-bold">{avatarData.valueScore}</span>
+                                {avatarData.level < 3 && (
+                                    <span className="text-[10px] text-gray-500">/ {nextLevelThreshold}</span>
+                                )}
+                            </div>
                         </div>
                         <div className="flex justify-between items-center p-2 border border-gray-800">
                             <span className="text-gray-400 text-xs">LOCKED_LIQ</span>
-                            <span className="text-narwhal-cyan font-bold">5.4 SUI</span>
+                            <span className="text-narwhal-cyan font-bold">{formatBalance(avatarData.lockedBalance)} SUI</span>
                         </div>
                     </div>
                 </div>
@@ -213,33 +390,55 @@ export default function DashboardPage() {
                 {/* History & Rewards */}
                 <div className="md:col-span-2 space-y-8">
                     {/* Pending Rewards */}
-                    {pendingReward && (
-                        <div className="bg-narwhal-card border-2 border-narwhal-lime p-8 shadow-[0_0_30px_rgba(192,255,0,0.15)] relative overflow-hidden group">
-                            <div className="absolute top-0 right-0 p-4 opacity-10 text-9xl text-narwhal-lime font-black pointer-events-none">
-                                $
-                            </div>
-                            <div className="flex justify-between items-center mb-6 relative z-10">
-                                <div>
-                                    <h3 className="text-2xl font-mono text-white">MISSION_SUCCESS</h3>
-                                    <p className="text-narwhal-lime text-sm">REWARD_ALLOCATION_DETECTED</p>
-                                </div>
-                                <div className="text-4xl font-mono text-white border-b-2 border-narwhal-lime pb-1">
-                                    500 MIST
-                                </div>
-                            </div>
-
-                            <button
-                                onClick={handleClaim}
-                                disabled={isClaiming}
-                                className="w-full btn-primary relative z-10"
-                            >
-                                {isClaiming ? "PROCESSING..." : "CLAIM_REWARD"}
+                    <div className="bg-narwhal-card border border-gray-800 p-6">
+                        <h3 className="text-white font-mono mb-4 text-sm">CHECK_REWARD_STATUS</h3>
+                        <div className="flex gap-2 mb-4">
+                            <input
+                                value={checkRewardId}
+                                onChange={(e) => setCheckRewardId(e.target.value)}
+                                placeholder="ENTER_GAME_ID"
+                                className="bg-black/50 border border-gray-600 text-white font-mono px-4 py-2 flex-1 text-xs"
+                            />
+                            <button onClick={() => checkRewardForGame(checkRewardId)} className="bg-gray-700 text-white px-4 py-2 text-xs font-bold hover:bg-narwhal-cyan hover:text-black">
+                                SCAN
                             </button>
-                            <p className="text-[10px] text-center mt-3 text-gray-500 font-mono relative z-10">
-                                SPLIT: 90% WALLET // 10% NFT_INJECTION
-                            </p>
                         </div>
-                    )}
+
+                        {/* Status Message Area */}
+                        {rewardStatusMsg && !pendingReward && (
+                            <div className="text-xs font-mono text-narwhal-pink/80 text-center border border-narwhal-pink/30 p-4 animate-pulse uppercase my-4">
+                                {rewardStatusMsg}
+                            </div>
+                        )}
+
+                        {pendingReward && (
+                            <div className="bg-narwhal-card border-2 border-narwhal-lime p-8 shadow-[0_0_30px_rgba(192,255,0,0.15)] relative overflow-hidden group animate-in slide-in-from-right">
+                                <div className="absolute top-0 right-0 p-4 opacity-10 text-9xl text-narwhal-lime font-black pointer-events-none">
+                                    $
+                                </div>
+                                <div className="flex justify-between items-center mb-6 relative z-10">
+                                    <div>
+                                        <h3 className="text-2xl font-mono text-white">MISSION_SUCCESS</h3>
+                                        <p className="text-narwhal-lime text-sm">REWARD_ALLOCATION_DETECTED</p>
+                                    </div>
+                                    <div className="text-4xl font-mono text-white border-b-2 border-narwhal-lime pb-1">
+                                        {pendingReward.amount} MIST
+                                    </div>
+                                </div>
+
+                                <button
+                                    onClick={handleClaim}
+                                    disabled={isClaiming}
+                                    className="w-full btn-primary relative z-10"
+                                >
+                                    {isClaiming ? "PROCESSING..." : "CLAIM_REWARD"}
+                                </button>
+                                <p className="text-[10px] text-center mt-3 text-gray-500 font-mono relative z-10">
+                                    SPLIT: 90% WALLET // 10% NFT_INJECTION
+                                </p>
+                            </div>
+                        )}
+                    </div>
 
                     {/* Past Games */}
                     <div className="space-y-4">

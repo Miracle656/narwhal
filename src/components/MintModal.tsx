@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import AvatarRenderer from './AvatarRenderer';
 import { useSignAndExecuteTransaction } from '@mysten/dapp-kit';
 import { Transaction } from '@mysten/sui/transactions';
 import { cn } from '../lib/utils';
@@ -10,6 +11,21 @@ export default function MintModal({ onMintSuccess }: { onMintSuccess?: () => voi
     const { mutate: signAndExecuteTransaction } = useSignAndExecuteTransaction();
     const [isMinting, setIsMinting] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    const [previewDna, setPreviewDna] = useState([0, 0, 0, 0]);
+
+    // Cycling preview effect
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setPreviewDna([
+                Math.floor(Math.random() * 10), // Hue
+                Math.floor(Math.random() * 5),  // Skin
+                Math.floor(Math.random() * 10), // Tusk
+                Math.floor(Math.random() * 10)  // Accessory
+            ]);
+        }, 200);
+        return () => clearInterval(interval);
+    }, []);
 
     const handleMint = async () => {
         setIsMinting(true);
@@ -55,13 +71,17 @@ export default function MintModal({ onMintSuccess }: { onMintSuccess?: () => voi
             <div className="w-full max-w-md p-8 bg-narwhal-card border-brutal relative">
                 <h2 className="text-3xl font-bold mb-4 text-center">MINT NARWHAL</h2>
                 <p className="text-sm text-center mb-8 text-gray-400">
-                    Sync your biometric data to the chain. Generate your unique avatar.
+                    Syncing biometric data... generating DNA sequence.
                 </p>
 
-                <div className="flex justify-center mb-8">
-                    {/* Preview of a "Mystery" Avatar (All questions marks or spinning) */}
-                    <div className="w-48 h-48 border-2 border-dashed border-narwhal-cyan flex items-center justify-center animate-pulse">
-                        <span className="text-4xl">?</span>
+                <div className="flex justify-center mb-8 relative">
+                    <AvatarRenderer
+                        dna={previewDna}
+                        level={0}
+                        className="animate-pulse" // Removed sizeClass to default to w-64 h-64
+                    />
+                    <div className="absolute -bottom-6 text-xs font-mono text-narwhal-lime">
+                        DNA_SEQ: {previewDna.join('.')}
                     </div>
                 </div>
 
