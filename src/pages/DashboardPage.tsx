@@ -5,6 +5,8 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { PACKAGE_ID } from '../constants';
 import AvatarRenderer from '../components/AvatarRenderer';
+import { useRef } from 'react';
+import { uploadToWalrus } from '../utils/walrus';
 
 export default function DashboardPage() {
     const account = useCurrentAccount();
@@ -22,9 +24,60 @@ export default function DashboardPage() {
     const [joinGameId, setJoinGameId] = useState("");
     const [rewardStatusMsg, setRewardStatusMsg] = useState<string | null>(null);
     const [isEvolving, setIsEvolving] = useState(false);
+    const [isSnapshotting, setIsSnapshotting] = useState(false);
+    const avatarRef = useRef<HTMLDivElement>(null);
+
+    const handleSnapshot = async () => {
+        if (!avatarRef.current || !userAvatarId) return;
+        setIsSnapshotting(true);
+        try {
+            console.log("Starting snapshot...");
+            const { toBlob } = await import('html-to-image');
+
+            const blob = await toBlob(avatarRef.current, {
+                quality: 0.95,
+                backgroundColor: 'transparent',
+                style: { transform: 'scale(1)' }
+            });
+
+            if (!blob) throw new Error("Snapshot failed to create Blob");
+
+            console.log("Snapshot success:", blob);
+
+            const blobId = await uploadToWalrus(blob);
+            if (!blobId) throw new Error("Upload to Walrus failed");
+
+            const tx = new Transaction();
+            tx.moveCall({
+                target: `${PACKAGE_ID}::avatar::set_image_blob_id`,
+                arguments: [
+                    tx.object(userAvatarId),
+                    tx.pure.string(blobId)
+                ]
+            });
+
+            signAndExecuteTransaction({ transaction: tx as any }, {
+                onSuccess: () => {
+                    toast.success("Avatar Saved to Chain!");
+                    setIsSnapshotting(false);
+                    if (refetchAvatar) refetchAvatar();
+                },
+                onError: (e) => {
+                    toast.error("Save to Chain Failed");
+                    console.error(e);
+                    setIsSnapshotting(false);
+                }
+            });
+
+        } catch (e) {
+            console.error("Snapshot error:", e);
+            toast.error("Snapshot Failed");
+            setIsSnapshotting(false);
+        }
+    };
 
     // Fetch User's Avatar for Claiming & Stats
-    const { data: ownedObjects } = useSuiClientQuery(
+    const { data: ownedObjects, refetch: refetchAvatar } = useSuiClientQuery(
         'getOwnedObjects',
         {
             owner: account?.address || '',
@@ -64,10 +117,10 @@ export default function DashboardPage() {
                 { transaction: tx as any },
                 {
                     onSuccess: () => {
-                        toast.error("EVOLUTION STARTED..."); // Toast error color looks cool/alerting, or use success
+                        toast.loading("EVOLUTION IN PROGRESS...", { duration: 2000 });
                         setTimeout(() => {
                             toast.success("EVOLUTION COMPLETE! SYSTEM UPGRADED.");
-                            // ideally refetch here
+                            if (refetchAvatar) refetchAvatar();
                         }, 2000);
                     },
                     onError: () => toast.error("Evolution Failed")
@@ -274,20 +327,20 @@ export default function DashboardPage() {
     };
 
     return (
-        <div className="min-h-screen p-8 max-w-6xl mx-auto pt-24 z-10 relative">
-            <h1 className="text-4xl font-black text-white mb-8 border-l-4 border-narwhal-lime pl-4">OPERATOR_DASHBOARD</h1>
+        <div className="min-h-screen p-4 md:p-8 max-w-6xl mx-auto pt-24 z-10 relative">
+            <h1 className="text-2xl md:text-4xl font-black text-white mb-8 border-l-4 border-narwhal-lime pl-4 break-words">OPERATOR_DASHBOARD</h1>
 
             {/* Create & Join Game Section */}
             <div className="mb-12 grid grid-cols-1 md:grid-cols-2 gap-8">
                 {/* Create Game */}
-                <div className="bg-narwhal-card border-brutal p-8 shadow-neon flex flex-col justify-between">
+                <div className="bg-narwhal-card border-brutal p-6 md:p-8 shadow-neon flex flex-col justify-between">
                     <div>
-                        <div className="flex justify-between items-center mb-6">
+                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-2">
                             <div>
-                                <h2 className="text-2xl font-mono text-white">INITIATE_OPERATION</h2>
+                                <h2 className="text-xl md:text-2xl font-mono text-white">INITIATE_OPERATION</h2>
                                 <p className="text-gray-400 text-sm">Create a new game lobby.</p>
                             </div>
-                            <div className="text-narwhal-cyan font-mono text-xs border border-narwhal-cyan px-2 py-1">
+                            <div className="text-narwhal-cyan font-mono text-xs border border-narwhal-cyan px-2 py-1 self-start md:self-auto">
                                 0.1 SUI
                             </div>
                         </div>
@@ -323,7 +376,7 @@ export default function DashboardPage() {
                 </div>
 
                 {/* Join Game */}
-                <div className="bg-narwhal-card border-brutal p-8 shadow-neon flex flex-col justify-between">
+                <div className="bg-narwhal-card border-brutal p-6 md:p-8 shadow-neon flex flex-col justify-between">
                     <div>
                         <h2 className="text-2xl font-mono text-white mb-2">JOIN_OPERATION</h2>
                         <p className="text-gray-400 text-sm mb-6">Enter existing operation coordinates.</p>
@@ -352,9 +405,11 @@ export default function DashboardPage() {
 
                     <div className="relative">
                         <AvatarRenderer
+                            ref={avatarRef}
                             dna={avatarData.dna}
                             level={avatarData.level}
-                            className={`border-2 border-narwhal-lime ${canEvolve ? 'opacity-50' : ''}`}
+                            className={`border-2 border-narwhal-lime w-full max-w-[250px] aspect-square ${canEvolve ? 'opacity-50' : ''}`}
+                            sizeClass="w-full h-full"
                         />
 
                         {canEvolve && (
@@ -369,6 +424,15 @@ export default function DashboardPage() {
                             </div>
                         )}
                     </div>
+
+                    {/* Snapshot Button */}
+                    <button
+                        onClick={handleSnapshot}
+                        disabled={isSnapshotting || isEvolving}
+                        className="mt-4 w-full bg-transparant border border-narwhal-cyan text-narwhal-cyan hover:bg-narwhal-cyan hover:text-black py-2 text-[10px] font-mono tracking-wider transition-colors uppercase disabled:opacity-50"
+                    >
+                        {isSnapshotting ? "UPLOADING TO WALRUS..." : "📸 SAVE IMAGE TO WALLET"}
+                    </button>
 
                     <div className="w-full mt-6 space-y-2 font-mono">
                         <div className="flex justify-between items-center p-2 border border-gray-800">
@@ -386,7 +450,6 @@ export default function DashboardPage() {
                         </div>
                     </div>
                 </div>
-
                 {/* History & Rewards */}
                 <div className="md:col-span-2 space-y-8">
                     {/* Pending Rewards */}
@@ -440,28 +503,69 @@ export default function DashboardPage() {
                         )}
                     </div>
 
-                    {/* Past Games */}
-                    <div className="space-y-4">
-                        <h3 className="text-xl text-white font-mono border-b border-gray-800 pb-2">OPERATION_LOG</h3>
-                        {[1, 2, 3].map(i => (
-                            <div key={i} className="bg-narwhal-card border border-gray-800 p-4 flex justify-between items-center hover:border-narwhal-cyan transition-colors">
-                                <div className="flex items-center gap-4">
-                                    <div className="text-narwhal-cyan font-mono text-sm">
-                                        #00{i}
-                                    </div>
-                                    <div>
-                                        <div className="font-bold text-white text-sm">SUI_FUNDAMENTALS</div>
-                                        <div className="text-[10px] text-gray-500 font-mono">2_CYCLES_AGO</div>
-                                    </div>
-                                </div>
-                                <span className="text-narwhal-lime font-mono text-xs border border-narwhal-lime px-2 py-1">
-                                    [WIN]
-                                </span>
-                            </div>
-                        ))}
+                    {/* Operation Log (Real Data) */}
+                    <div>
+                        <h3 className="text-white font-mono mb-6 text-xl border-b border-gray-800 pb-2">OPERATION_LOG</h3>
+                        <div className="space-y-4">
+                            <OperationsLog />
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
+    );
+}
+
+// Separate component for Real Event Data to keep main component clean
+function OperationsLog() {
+    const { data: events, isPending } = useSuiClientQuery(
+        'queryEvents',
+        {
+            query: { MoveModule: { package: PACKAGE_ID, module: 'game' } },
+            order: 'descending',
+            limit: 5
+        },
+        {
+            refetchInterval: 5000
+        }
+    );
+
+    if (isPending) return <div className="text-gray-500 font-mono text-sm">SCANNING NETWORK...</div>;
+
+    if (!events || events.data.length === 0) {
+        return <div className="text-gray-500 font-mono text-sm italic">NO RECENT OPERATIONS_DETECTED</div>;
+    }
+
+    // Filter for ScoreSubmitted events specifically if other events exist
+    const relevantEvents = events.data.filter(e => e.type.includes('ScoreSubmitted'));
+
+    return (
+        <>
+            {relevantEvents.map((event, idx) => {
+                const parsedJson = event.parsedJson as any;
+                const gameIdShort = parsedJson?.game_id ? `${parsedJson.game_id.substring(0, 6)}...` : 'UNKNOWN';
+                const score = parsedJson?.score || '0';
+                const timeAgo = new Date(Number(event.timestampMs)).toLocaleTimeString();
+
+                return (
+                    <div key={idx} className="bg-narwhal-card/50 border border-gray-800 p-4 flex justify-between items-center hover:border-narwhal-cyan transition-colors group">
+                        <div className="flex items-center gap-4">
+                            <span className="text-narwhal-cyan font-mono text-sm">#{String(idx + 1).padStart(3, '0')}</span>
+                            <div>
+                                <div className="text-white font-bold font-mono text-sm group-hover:text-narwhal-cyan transition-colors">
+                                    OP_ID: {gameIdShort}
+                                </div>
+                                <div className="text-[10px] text-gray-500 font-mono uppercase">
+                                    SCORE_SUBMITTED: {score} // {timeAgo}
+                                </div>
+                            </div>
+                        </div>
+                        <div className="border border-narwhal-lime text-narwhal-lime px-2 py-1 text-[10px] font-bold tracking-wider uppercase">
+                            LOGGED
+                        </div>
+                    </div>
+                );
+            })}
+        </>
     );
 }

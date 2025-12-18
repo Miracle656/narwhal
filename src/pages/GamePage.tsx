@@ -267,7 +267,7 @@ export default function GamePage() {
                         />
                     </div>
 
-                    <div className="bg-narwhal-card border-brutal p-8 mb-8 min-h-[200px] flex items-center justify-center relative overflow-hidden group">
+                    <div className="bg-narwhal-card border-brutal p-4 md:p-8 mb-8 min-h-[200px] flex items-center justify-center relative overflow-hidden group">
                         <div className="absolute top-0 right-0 p-4 opacity-5 text-9xl text-white font-black group-hover:opacity-10 transition-opacity select-none">?</div>
                         <h2 className="text-2xl md:text-3xl font-bold text-white text-center leading-relaxed max-w-2xl relative z-10">
                             {QUESTIONS[currentQuestionIndex].text}
@@ -329,19 +329,45 @@ export default function GamePage() {
                             <span>OPERATIVE</span>
                             <span>SCORE</span>
                         </div>
-                        {leaderboard.map((entry, i) => (
-                            <div key={i} className={`p-4 flex justify-between items-center border-b border-gray-800 ${entry.address === account?.address ? 'bg-narwhal-cyan/10' : ''}`}>
-                                <span className={`font-black ${i === 0 ? 'text-narwhal-lime text-xl' : 'text-gray-500'}`}>{i + 1}</span>
-                                <div className="flex items-center gap-3">
-                                    <AvatarRenderer dna={[i, i + 1, i + 2, i + 3]} sizeClass="w-8 h-8" className="border border-gray-600" />
-                                    <span className="font-mono text-sm text-gray-300">
-                                        {entry.address.slice(0, 6)}...{entry.address.slice(-4)}
-                                        {entry.address === account?.address && <span className="ml-2 text-[10px] bg-narwhal-cyan text-black px-1 rounded">YOU</span>}
+                        {leaderboard.map((entry, i) => {
+                            const p = entry.address;
+                            // Consistent DNA generation
+                            const dna = [p.charCodeAt(2) % 5, p.charCodeAt(3) % 10, p.charCodeAt(4) % 10, p.charCodeAt(5) % 10];
+
+                            return (
+                                <div key={i} className={`p-4 flex justify-between items-center border-b border-gray-800 transition-colors ${entry.address === account?.address ? 'bg-narwhal-cyan/10' : 'hover:bg-white/5'}`}>
+                                    <span className={`font-black w-8 text-center ${i === 0 ? 'text-2xl filter drop-shadow-glow' : 'text-gray-500 text-lg'}`}>
+                                        {i === 0 ? '👑' : i + 1}
+                                    </span>
+
+                                    <div className="flex items-center gap-6 flex-1 ml-4 justify-start">
+                                        <div className="relative group">
+                                            <div className="absolute inset-0 bg-narwhal-cyan/20 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
+                                            <AvatarRenderer
+                                                dna={dna}
+                                                sizeClass="w-20 h-20"
+                                                className="transform hover:scale-110 transition-transform duration-300 drop-shadow-lg"
+                                            />
+                                        </div>
+
+                                        <div className="flex flex-col justify-center">
+                                            <span className="font-mono text-sm text-gray-200 tracking-wider">
+                                                {entry.address.slice(0, 6)}...{entry.address.slice(-4)}
+                                            </span>
+                                            {entry.address === account?.address && (
+                                                <span className="text-[10px] font-bold text-narwhal-cyan uppercase tracking-widest mt-1">
+                                                    YOU
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <span className={`font-mono text-lg font-bold ${i === 0 ? 'text-narwhal-lime' : 'text-white'}`}>
+                                        {entry.score} <span className="text-xs text-gray-500 font-normal">PTS</span>
                                     </span>
                                 </div>
-                                <span className="font-mono text-narwhal-lime">{entry.score} PTS</span>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
 
                     <div className="flex gap-2">

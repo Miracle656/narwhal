@@ -67,26 +67,27 @@ export default function MintModal({ onMintSuccess }: { onMintSuccess?: () => voi
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
-            <div className="w-full max-w-md p-8 bg-narwhal-card border-brutal relative">
-                <h2 className="text-3xl font-bold mb-4 text-center">MINT NARWHAL</h2>
-                <p className="text-sm text-center mb-8 text-gray-400">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+            <div className="w-full max-w-md p-6 md:p-8 bg-narwhal-card border-brutal relative shadow-neon">
+                <h2 className="text-2xl md:text-3xl font-bold mb-2 md:mb-4 text-center text-white">MINT NARWHAL</h2>
+                <p className="text-xs md:text-sm text-center mb-6 md:mb-8 text-gray-400 font-mono">
                     Syncing biometric data... generating DNA sequence.
                 </p>
 
-                <div className="flex justify-center mb-8 relative">
+                <div className="flex justify-center mb-6 md:mb-8 relative">
                     <AvatarRenderer
                         dna={previewDna}
                         level={0}
-                        className="animate-pulse" // Removed sizeClass to default to w-64 h-64
+                        className="animate-pulse scale-75 md:scale-100 origin-center"
+                        sizeClass="w-48 h-48 md:w-64 md:h-64"
                     />
-                    <div className="absolute -bottom-6 text-xs font-mono text-narwhal-lime">
+                    <div className="absolute -bottom-4 md:-bottom-6 text-[10px] md:text-xs font-mono text-narwhal-lime">
                         DNA_SEQ: {previewDna.join('.')}
                     </div>
                 </div>
 
                 {error && (
-                    <div className="mb-4 p-2 bg-red-900/50 border border-red-500 text-red-100 text-xs">
+                    <div className="mb-4 p-2 bg-red-900/50 border border-red-500 text-red-100 text-xs font-mono">
                         {error}
                     </div>
                 )}
@@ -94,7 +95,7 @@ export default function MintModal({ onMintSuccess }: { onMintSuccess?: () => voi
                 <button
                     onClick={handleMint}
                     disabled={isMinting}
-                    className={cn("w-full btn-primary text-xl py-4", isMinting && "opacity-50 cursor-not-allowed")}
+                    className={cn("w-full btn-primary text-lg md:text-xl py-3 md:py-4 transition-all hover:scale-105", isMinting && "opacity-50 cursor-not-allowed")}
                 >
                     {isMinting ? "MINTING..." : "INITIATE SEQUENCE"}
                 </button>

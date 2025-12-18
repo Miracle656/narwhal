@@ -1,3 +1,5 @@
+import { forwardRef } from 'react';
+
 type AvatarRendererProps = {
     dna: number[];
     level?: number;
@@ -5,7 +7,7 @@ type AvatarRendererProps = {
     sizeClass?: string;
 };
 
-export default function AvatarRenderer({ dna, level = 0, className, sizeClass = "w-64 h-64" }: AvatarRendererProps) {
+const AvatarRenderer = forwardRef<HTMLDivElement, AvatarRendererProps>(({ dna, level = 0, className, sizeClass = "w-64 h-64" }, ref) => {
     // --- CONFIGURATION ZONE ---
     const DEBUG_MODE = false; // <--- SET TO TRUE to see red borders, FALSE to hide them.
 
@@ -46,37 +48,36 @@ export default function AvatarRenderer({ dna, level = 0, className, sizeClass = 
     };
 
     return (
-        <div className={`relative flex flex-col items-center ${className || ''}`}>
+        <div ref={ref} className={`relative flex flex-col items-center ${className || ''}`}>
 
             <div className={`relative ${sizeClass} flex items-center justify-center`}>
                 {level >= 2 && (
                     <div className="absolute inset-0 bg-narwhal-lime opacity-20 animate-pulse blur-xl z-0" />
                 )}
 
-                <div className="flex items-center justify-center h-3/4">
+                <div className="flex items-center justify-center h-3/4 w-[85%] pr-8">
 
                     {/* 1. TAIL */}
                     <div className={`relative h-full w-auto flex-shrink-0 z-0 ${DEBUG_MODE ? 'border border-red-500' : ''}`}>
+                        {/* Always apply hue rotation to the active layer */}
                         <div style={{ filter: `hue-rotate(${tailHue}deg)` }} className="h-full w-auto">
-                            {renderPartImg(0, 'tail', "h-full w-auto object-contain block")}
+                            {/* Render ONLY the skin for the current level (or fallback to base if missing) */}
+                            {renderPartImg(Math.min(level, 3), 'tail', "h-full w-auto object-contain block")}
                         </div>
-                        {level >= 1 && <div className="absolute inset-0 h-full w-auto">{renderPartImg(1, 'tail', "h-full w-auto object-contain block")}</div>}
                     </div>
 
                     {/* 2. BODY */}
                     <div className={`relative h-full w-auto flex-shrink-0 z-10 -ml-1 ${DEBUG_MODE ? 'border border-blue-500' : ''}`}>
                         <div style={{ filter: `hue-rotate(${bodyHue}deg)` }} className="h-full w-auto">
-                            {renderPartImg(0, 'body', "h-full w-auto object-contain block scale-[1.02]")}
+                            {renderPartImg(Math.min(level, 3), 'body', "h-full w-auto object-contain block scale-[1.02]")}
                         </div>
-                        {level >= 1 && <div className="absolute inset-0 h-full w-auto">{renderPartImg(1, 'body', "h-full w-auto object-contain")}</div>}
                     </div>
 
                     {/* 3. HEAD */}
                     <div className={`relative h-full w-auto flex-shrink-0 z-20 -ml-1 ${DEBUG_MODE ? 'border border-green-500' : ''}`}>
                         <div style={{ filter: `hue-rotate(${headHue}deg)` }} className="h-full w-auto">
-                            {renderPartImg(0, 'head', "h-full w-auto object-contain block")}
+                            {renderPartImg(Math.min(level, 3), 'head', "h-full w-auto object-contain block")}
                         </div>
-                        {level >= 1 && <div className="absolute inset-0 h-full w-auto">{renderPartImg(1, 'head', "h-full w-auto object-contain")}</div>}
 
                         {/* --- TUSK CONTAINER --- */}
                         <div
@@ -90,9 +91,8 @@ export default function AvatarRenderer({ dna, level = 0, className, sizeClass = 
                             }}
                         >
                             <div style={{ filter: `hue-rotate(${tuskHue}deg)` }} className="h-full w-full">
-                                {renderPartImg(0, 'tusk', "h-full w-full object-contain object-left")}
+                                {renderPartImg(Math.min(level, 3), 'tusk', "h-full w-full object-contain object-left")}
                             </div>
-                            {level >= 1 && <div className="absolute inset-0 h-full w-full">{renderPartImg(1, 'tusk', "h-full w-full object-contain object-left")}</div>}
                         </div>
                     </div>
 
@@ -104,4 +104,6 @@ export default function AvatarRenderer({ dna, level = 0, className, sizeClass = 
             </div>
         </div>
     );
-}
+});
+
+export default AvatarRenderer;

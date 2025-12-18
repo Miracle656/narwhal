@@ -5,6 +5,8 @@ import { useNavigate } from 'react-router-dom';
 import { PACKAGE_ID } from '../constants';
 import MintModal from '../components/MintModal';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Menu, X } from 'lucide-react';
+import narwhalMascot from '../assets/narwhalmascot.png';
 
 export default function JoinPage() {
     const { mutate: signAndExecuteTransaction } = useSignAndExecuteTransaction();
@@ -31,6 +33,7 @@ export default function JoinPage() {
 
     const [showMint, setShowMint] = useState(false);
     const [showContent, setShowContent] = useState(false);
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
 
     useEffect(() => {
         const timer = setTimeout(() => setShowContent(true), 2500);
@@ -103,7 +106,9 @@ export default function JoinPage() {
                 <div className="text-narwhal-lime font-mono text-xl tracking-widest animate-pulse cursor-default">
                     NARWHAL_NET
                 </div>
-                <div className="flex items-center gap-4">
+
+                {/* Desktop Nav */}
+                <div className="hidden md:flex items-center gap-4">
                     {account && (
                         <button
                             onClick={() => navigate('/dashboard')}
@@ -117,7 +122,42 @@ export default function JoinPage() {
                         className="!bg-narwhal-cyan !text-narwhal-bg !font-bold !uppercase !rounded-none !border-2 !border-narwhal-cyan hover:!bg-transparent hover:!text-narwhal-cyan hover:!shadow-neon transition-all"
                     />
                 </div>
+
+                {/* Mobile Menu Toggle */}
+                <button
+                    className="md:hidden text-narwhal-cyan hover:text-white transition-colors p-2"
+                    onClick={() => setIsMenuOpen(!isMenuOpen)}
+                >
+                    {isMenuOpen ? <X size={32} /> : <Menu size={32} />}
+                </button>
             </div>
+
+            {/* Mobile Menu Dropdown */}
+            <AnimatePresence>
+                {isMenuOpen && (
+                    <motion.div
+                        initial={{ opacity: 0, y: -20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        className="absolute top-20 left-4 right-4 z-50 bg-black/95 border-brutal p-6 flex flex-col gap-4 md:hidden"
+                    >
+                        {account && (
+                            <button
+                                onClick={() => { navigate('/dashboard'); setIsMenuOpen(false); }}
+                                className="bg-narwhal-card border-brutal px-6 py-4 text-narwhal-cyan font-bold hover:bg-narwhal-cyan hover:text-narwhal-bg transition-all uppercase tracking-wider w-full"
+                            >
+                                Dashboard
+                            </button>
+                        )}
+                        <div className="flex justify-center">
+                            <ConnectButton
+                                connectText="CONNECT_UPLINK"
+                                className="!bg-narwhal-cyan !text-narwhal-bg !font-bold !uppercase !rounded-none !border-2 !border-narwhal-cyan hover:!bg-transparent hover:!text-narwhal-cyan hover:!shadow-neon transition-all w-full !justify-center"
+                            />
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             <AnimatePresence>
                 {!showContent ? (
@@ -128,14 +168,14 @@ export default function JoinPage() {
                         exit={{ opacity: 0 }}
                     >
                         <motion.div
-                            className="bg-narwhal-card border-brutal p-8"
+                            className=""
                             initial={{ scale: 0, rotate: -180 }}
                             animate={{ scale: 1.5, rotate: 0 }}
                             exit={{ scale: 0, opacity: 0 }}
                             transition={{ duration: 1, type: "spring" }}
                         >
-                            <div className="w-16 h-16 bg-narwhal-cyan flex items-center justify-center">
-                                <span className="text-4xl text-narwhal-bg">🦄</span>
+                            <div className="w-32 h-32 bg-transparent flex items-center justify-center">
+                                <img src={narwhalMascot} alt="Loading..." className="w-full h-full object-contain drop-shadow-glow animate-pulse" />
                             </div>
                         </motion.div>
                     </motion.div>
@@ -163,17 +203,17 @@ export default function JoinPage() {
                         ) : (
                             <div className="w-full max-w-lg space-y-12">
                                 {/* Input Area */}
-                                <div className="bg-narwhal-card border-brutal p-2 flex gap-2 shadow-neon transition-all hover:scale-105">
+                                <div className="bg-narwhal-card border-brutal p-2 flex flex-col md:flex-row gap-2 shadow-neon transition-all hover:scale-105">
                                     <input
                                         value={gameCode}
                                         onChange={(e) => setGameCode(e.target.value)}
-                                        className="flex-1 bg-transparent border-none text-white font-mono text-xl placeholder-gray-600 focus:outline-none px-4 text-center tracking-widest"
+                                        className="flex-1 bg-transparent border-none text-white font-mono text-base md:text-xl placeholder-gray-600 focus:outline-none px-4 py-4 md:py-0 text-center tracking-widest min-w-0"
                                         placeholder="ENTER_COORDINATES"
                                     />
                                     <button
                                         onClick={handleJoin}
                                         disabled={isJoining}
-                                        className="bg-narwhal-lime text-narwhal-bg font-black px-8 py-4 hover:bg-white transition-colors uppercase tracking-widest md:text-xl clip-path-slant"
+                                        className="bg-narwhal-lime text-narwhal-bg font-black px-8 py-4 hover:bg-white transition-colors uppercase tracking-widest text-lg md:text-xl clip-path-slant w-full md:w-auto"
                                     >
                                         {isJoining ? "..." : "JOIN"}
                                     </button>
