@@ -1,73 +1,45 @@
-# React + TypeScript + Vite
+# NARWHAL_NET
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+**PLAY_TO_LEARN // EVOLVE_TO_EARN**
 
-Currently, two official plugins are available:
+Welcome to **Narwhal.net**, a decentralized gaming experience built on the **Sui Network**. 
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+🌊 **Live App**: [https://narwhal-eight.vercel.app/](https://narwhal-eight.vercel.app/)
 
-## React Compiler
+## 🧬 Project Overview
+**Narwhal.net** is a decentralized, interactive gaming experience built on the **Sui Network** that redefines digital ownership through **Dynamic NFTs**. It merges "Play-to-Learn" mechanics with an "Evolve-to-Earn" ecosystem, where users don't just own static assets—they nurture and upgrade them through on-chain actions.
 
-The React Compiler is currently not compatible with SWC. See [this issue](https://github.com/vitejs/vite-plugin-react/issues/428) for tracking the progress.
+Unlike traditional NFTs that remain unchanged, Narwhals are living digital organisms. They carry unique **DNA** tailored to their owner's wallet address and can mutate through four distinct evolutionary stages: **Base**, **Cyber**, **Mech**, and **Legend**.
 
-## Expanding the ESLint configuration
+## 🕹️ Key Features
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### 1. Evolvable Avatars
+Your Narwhal is not just a JPEG; it's a stateful object on the Sui blockchain.
+- **DNA System**: Each avatar is procedurally generated based on your wallet address, ensuring a unique hue and personality.
+- **On-Chain Evolution**: As you participate in the ecosystem, you can trigger 'Evolution' transactions. This updates the metadata on-chain, physically transforming your avatar's skin and traits while retaining its core DNA identity.
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+### 2. The Interactive Lobby
+The "Lobby" is a real-time, digital aquarium where community members coexist.
+- **Autonomous Swarm**: Avatars use flocking algorithms to swim autonomously.
+- **Interactive Control**: Users can tap to guide the swarm, creating a shared, playful environment.
+- **Live Updates**: See new operatives join and evolve in real-time.
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+### 3. Operator Dashboard
+A command center for managing your digital assets.
+- **Visual Status**: View high-fidelity renderings of your Narwhal's current form.
+- **Asset Management**: Seamlessly mint, view, and upgrade your assets.
+- **Responsiveness**: Fully optimized interface for mobile and desktop command.
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+## 🛠 Tech Stack
+- **Frontend**: React, TypeScript, Vite, TailwindCSS
+- **Blockchain**: Sui Network (Move Smart Contracts)
+- **Deployment**: Vercel
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## 📦 Local Operation
+To run the Narwhal Uplink locally:
+1. Clone the repository.
+2. Install dependencies: `npm install`
+3. Start the uplink: `npm run dev`
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+---
+*System Status: ONLINE*
